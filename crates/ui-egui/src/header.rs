@@ -825,10 +825,17 @@ fn ws_menu(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
 
 /// The ArtCraft mark as supplied in `docs/brand` (the README's and getartcraft.com's logo; used
 /// unmodified, see `docs/brand/LICENSE-brand.txt`).
+#[cfg(not(feature = "unbranded"))]
 static ARTCRAFT_MARK: &[u8] = include_bytes!("../../../docs/brand/artcraft-mark.png");
+
+/// Unbranded builds (the `unbranded` feature) draw no mark: modified builds must not carry the
+/// ArtCraft marks (`docs/brand/LICENSE-brand.txt`).
+#[cfg(feature = "unbranded")]
+pub fn paint_logo(_p: &egui::Painter, _r: Rect) {}
 
 /// The ArtCraft mark in `r` (decoded once into a mipmapped texture, so it stays crisp from the
 /// 24 px Tools bar to the About dialog). Nothing is drawn if it can't be decoded.
+#[cfg(not(feature = "unbranded"))]
 pub fn paint_logo(p: &egui::Painter, r: Rect) {
     let ctx = p.ctx();
     let id = egui::Id::unique("artcraft-mark");

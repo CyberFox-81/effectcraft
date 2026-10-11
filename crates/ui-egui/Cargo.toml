@@ -52,3 +52,8 @@ exr = { workspace = true }
 [build-dependencies]
 serde_json = { workspace = true }
 toml = "1"
+
+[features]
+# Leave out the ArtCraft mark (docs/brand/), which modified builds must not carry
+# (docs/brand/LICENSE-brand.txt).
+unbranded = []

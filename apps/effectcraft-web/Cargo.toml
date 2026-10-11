@@ -12,6 +12,10 @@ workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# See effectcraft-ui-egui's `unbranded`: for redistributed modified builds.
+unbranded = ["effectcraft-ui-egui/unbranded"]
+
 # The browser glue is wasm32-only; on other targets the crate holds just the portable storage
 # model (`store`), unit-tested natively. Build the app with `cargo xtask web` (see docs/web.md).
 [dependencies]
