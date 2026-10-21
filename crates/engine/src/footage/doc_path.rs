@@ -46,7 +46,7 @@ pub fn resolve(stored: &str, project: Option<&str>) -> Result<PathBuf, NotFollow
         let p = Path::new(p);
         std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf())
     });
-    craft_docpath::resolve_absolute(stored, project.as_deref()).map_err(|why| match why {
+    resolve_absolute(stored, project.as_deref()).map_err(|why| match why {
         // Resolved, but still relative: it would be taken from the working directory, which the
         // project does not choose. A Windows drive or share path (`C:\x`) stays invalid outside
         // Windows even with a project.
@@ -55,6 +55,20 @@ pub fn resolve(stored: &str, project: Option<&str>) -> Result<PathBuf, NotFollow
         }
         why => NotFollowed::Refused(why),
     })
+}
+
+/// `craft_docpath::resolve_absolute`, with a rooted path (`/a/b`) counting as absolute everywhere
+/// but on Windows. It asks `Path::is_absolute`, which wants a Windows prefix on
+/// wasm32-unknown-unknown and so is never true there: every footage path a project stores would
+/// be refused in the web build.
+fn resolve_absolute(stored: &str, project: Option<&Path>) -> Result<PathBuf, Refused> {
+    let path = craft_docpath::resolve(stored, project)?;
+    if is_rooted(&path) { Ok(path) } else { Err(Refused::Invalid) }
+}
+
+/// Whether `path` is absolute on the running platform (see [`resolve_absolute`]).
+fn is_rooted(path: &Path) -> bool {
+    if cfg!(windows) { path.is_absolute() } else { path.has_root() }
 }
 
 /// Whether `p` is a Windows drive or share path, which a project cannot make absolute outside Windows.

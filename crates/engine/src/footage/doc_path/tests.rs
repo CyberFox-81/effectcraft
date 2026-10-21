@@ -169,3 +169,15 @@ fn stored_paths_resolve_against_the_project() {
     #[cfg(windows)]
     assert!(super::resolve(r"\\server\share\x.mov", Some(r"\\SERVER\share\job\intro.ecproj")).is_ok());
 }
+
+/// A rooted path is absolute without asking `Path::is_absolute`, which is never true on
+/// wasm32-unknown-unknown (where every stored footage path was refused).
+#[cfg(not(windows))]
+#[test]
+fn rooted_paths_count_as_absolute() {
+    use std::path::{Path, PathBuf};
+    assert!(super::is_rooted(Path::new("/host/Documents/Clip.mp4")));
+    assert!(!super::is_rooted(Path::new("Documents/Clip.mp4")));
+    let followed = super::resolve("/host/Documents/Clip.mp4", Some("/host/Documents/Clip.ecproj"));
+    assert_eq!(followed.ok(), Some(PathBuf::from("/host/Documents/Clip.mp4")));
+}
