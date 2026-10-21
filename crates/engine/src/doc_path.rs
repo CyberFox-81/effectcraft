@@ -49,10 +49,18 @@ pub fn resolve(stored: &str, project: Option<&str>) -> Result<PathBuf, NotFollow
     let path = craft_docpath::resolve(stored, project.as_deref()).map_err(NotFollowed::Refused)?;
     // A path that is still relative would be taken from the working directory, which the
     // project does not choose.
-    if path.is_relative() {
+    if !is_rooted(&path) {
         return Err(NotFollowed::NoProjectFolder);
     }
     Ok(path)
+}
+
+/// Whether `path` is absolute. `Path::is_absolute` wants a Windows prefix on
+/// wasm32-unknown-unknown, so there it is never true, and every footage path a project stores
+/// would be refused in the web build; a rooted path (`/a/b`) counts as absolute everywhere but on
+/// Windows.
+fn is_rooted(path: &Path) -> bool {
+    if cfg!(windows) { path.is_absolute() } else { path.has_root() }
 }
 
 /// The paths of `f` (its file and every frame of an image sequence) resolved against the document
