@@ -19,9 +19,12 @@
 //! - `effectcraft:dirty` (to the parent): `{ dirty }` whenever unsaved changes appear or go away.
 //! - `effectcraft:failed` (to the parent): `{ error }` when the app couldn't start.
 //!
-//! Only the parent window on the page's own origin is heard or answered. In host mode neither the
-//! last visit's project nor the demo opens, the session isn't kept in browser storage, and the
-//! parent guards leaving the page. Files from the parent stay out of browser storage too.
+//! Host mode needs a parent page on the page's own origin ([`crate::embed`]): framed by any other
+//! origin, or by one whose origin can't be read, `?host=parent` is ignored and EffectCraft runs as
+//! it does unframed (its session kept, saves downloaded). Only that parent window is heard or
+//! answered. In host mode neither the last visit's project nor the demo opens, the session isn't
+//! kept in browser storage, and the parent guards leaving the page. Files from the parent stay out
+//! of browser storage too.
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -63,7 +66,9 @@ struct Bridge {
 }
 
 impl Bridge {
-    /// `None` when the page isn't framed (there is no parent to talk to).
+    /// `None` when the page isn't framed (there is no parent to talk to), or when the parent isn't
+    /// on the page's own origin ([`crate::embed::host_allowed`]): messages only go to this origin,
+    /// so a cross-origin parent would never get a save while the project showed as saved.
     fn new() -> Option<Self> {
         let window = web_sys::window()?;
         let parent = window.parent().ok().flatten()?;
@@ -71,6 +76,11 @@ impl Bridge {
             return None;
         }
         let origin = window.location().origin().ok()?;
+        // Reading a cross-origin parent's location throws: that is `None` here.
+        let parent_origin = parent.location().origin().ok();
+        if !crate::embed::host_allowed(&origin, parent_origin.as_deref()) {
+            return None;
+        }
         Some(Self { window, parent, origin })
     }
 
@@ -87,7 +97,8 @@ fn requested() -> bool {
         .is_some_and(|h| h == "parent")
 }
 
-/// Whether the page runs embedded (`?host=parent` inside a frame).
+/// Whether the page runs embedded: `?host=parent` inside a frame whose parent is on the page's
+/// own origin.
 pub fn embedded() -> bool {
     requested() && Bridge::new().is_some()
 }
