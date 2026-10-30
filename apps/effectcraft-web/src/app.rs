@@ -139,6 +139,9 @@ impl eframe::App for WebApp {
         diskcache::configure(d.disk_cache_enabled, d.disk_cache_max_gb, storage::quota());
         api::set_info("diskCache", diskcache::stats());
         self.app.finish_ime_logic(ctx);
+        // A hidden tab only runs this tick, and commands or scheduled work can change the project
+        // in it: the parent hears about unsaved changes from here too.
+        crate::host::report_dirty(self.app.session.is_dirty());
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
@@ -277,7 +280,9 @@ pub async fn start(canvas_id: String) -> Result<(), JsValue> {
                 session.load_settings();
                 // Scripts in Scripts/Startup run before a project opens.
                 let _ = session.execute("file.runStartupScripts", json!({}));
-                let recovery = session.begin_recovery();
+                // Embedded, no recovery is offered, and the crash-recovery marker belongs to the
+                // page's own (unembedded) sessions: taking it would drop their offer.
+                let recovery = if embedded { None } else { session.begin_recovery() };
                 // `?empty`: a blank project; `?demo`: the demo project; otherwise what the config's
                 // `startup` says (default: the last visit's project, the demo on a first visit).
                 let demo = query_flag("demo");

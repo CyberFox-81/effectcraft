@@ -127,13 +127,15 @@ impl Services for WebServices {
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, format!("{path}: open it with File ▸ Open (or drop it on the page)")))
     }
     fn write_file(&self, path: &str, data: &[u8]) -> std::io::Result<()> {
-        put(path, data.into());
         let quiet = {
             let mut q = QUIET.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             let n = q.len();
             q.retain(|p| p != path);
             q.len() != n
         };
+        // Embedded, the parent page keeps what is saved: no copy stays in browser storage, except
+        // a save that is for browser storage itself (`api.saveToBrowser`).
+        STORE.put_file(path, data.into(), quiet || !crate::host::active());
         if quiet || crate::is_worker() {
             return Ok(());
         }
